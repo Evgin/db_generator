@@ -1,55 +1,48 @@
 package eg.postgres.initdb;
 
-import com.github.javafaker.*;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private static final XLogger log = XLoggerFactory.getXLogger(Main.class);
 
-    private static final Faker FAKER = new Faker();
-    private static final long MAX_COUNT = 1000000000L; // 1b
+    private static final int MAX_THREADS_COUNT = 4;
+    private static final long MAX_COUNT = 50000000L; // 1b
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, InterruptedException {
 
-        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "postgres");
-        conn.setAutoCommit(false);
+        Connection conn = DbHelper.createConn();
 
-        PreparedStatement ps = conn.prepareStatement("insert into persons(personal_number, first_name, second_name, middle_name, birth_date, birth_place) " +
-                "values (?, ?, ?, ?, ?, ?)");
+        TableHelper tableHelper = new TableHelper(conn);
 
+        long personsExistsCount = tableHelper.count(Tables.PERSONS);
+        log.info("already persons exists: {}", personsExistsCount);
 
-        long count = 0;
-
-        Name fName = FAKER.name();
-        Lorem fLorem = FAKER.lorem();
-        DateAndTime fDateAndTime = FAKER.date();
-        Address fAddress = FAKER.address();
-
-        for (; count < MAX_COUNT; count++) {
-
-            ps.setString(1, fLorem.characters(16));
-            ps.setString(2, fName.firstName());
-            ps.setString(3, fName.lastName());
-            ps.setString(4, fName.firstName());
-            ps.setDate(5, new Date(fDateAndTime.birthday().getTime()));
-            ps.setString(6, fAddress.fullAddress());
-
-            ps.addBatch();
-
-            if (count % 100000L == 0) {
-                log.info("Records created: " + count);
-                ps.executeBatch();
-                conn.commit();
-            }
+        if (personsExistsCount >= MAX_COUNT) {
+            log.info("all persons exists!");
+            return;
         }
 
+        long personsPerThread = (MAX_COUNT - personsExistsCount) / MAX_THREADS_COUNT;
+
+        ExecutorService executorService = Executors.newFixedThreadPool(MAX_THREADS_COUNT);
+
+        for (int i = 0; i < MAX_THREADS_COUNT; i++) {
+            Connection newConn = DbHelper.createConn();
+            executorService.execute(new InitTask(conn, personsPerThread));
+        }
+
+        executorService.shutdown();
+        executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.MICROSECONDS);
+
         conn.close();
-
-
     }
 
 }
