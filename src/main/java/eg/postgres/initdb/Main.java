@@ -36,7 +36,7 @@ public class Main {
 
         for (int i = 0; i < MAX_THREADS_COUNT; i++) {
             Connection newConn = DbHelper.createConn();
-            executorService.execute(new InitTask(conn, personsPerThread));
+            executorService.execute(new InitTask(newConn, personsPerThread));
         }
 
         executorService.shutdown();
