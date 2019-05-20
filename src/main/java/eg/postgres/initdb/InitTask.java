@@ -39,6 +39,7 @@ public class InitTask implements Runnable {
             log.info("Records created: {}", count);
             ps.executeBatch();
             conn.commit();
+            log.info("finish!");
         } catch (SQLException e) {
             log.error("unable process", e);
         } finally {
