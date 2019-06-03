@@ -13,8 +13,8 @@ public class Main {
 
     private static final XLogger log = XLoggerFactory.getXLogger(Main.class);
 
-    private static final int MAX_THREADS_COUNT = 4;
-    private static final long MAX_COUNT = 50000000L; // 1b
+    private static final int MAX_THREADS_COUNT = 5;
+    private static final long MAX_COUNT = 500000000L; // 1b
 
     public static void main(String[] args) throws SQLException, InterruptedException {
 
